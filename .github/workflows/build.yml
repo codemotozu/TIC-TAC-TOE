@@ -37,5 +37,5 @@ jobs:
           DOCKER_CLI_ACI: 1
         
       - name: Image scan
-        run: trivy image sevenajay/tic-tac-toe:latest > trivyimage.txt
+        run: trivy image codemozu/tic-tac-toe:latest > trivyimage.txt
           
