@@ -8,7 +8,7 @@ on:
 jobs:
   build-analyze-scan:
     name: Build
-    runs-on: [Linux]
+    runs-on: [self-hosted]
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -20,3 +20,5 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      - name: npm install dependency
+        run: npm install
