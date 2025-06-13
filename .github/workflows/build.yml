@@ -20,10 +20,13 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          
       - name: npm install dependency
         run: npm install
+        
       - name: Trivy file scan
         run: trivy fs . > trivyfs.txt
+        
       - name: Docker Build and push
         run: |
           docker build -t tic-tac-toe .
