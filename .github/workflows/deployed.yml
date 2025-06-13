@@ -1,11 +1,8 @@
 name: Build,Analyze,scan
-
 on:
   push:
     branches:
       - main
-
-
 jobs:
   build-analyze-scan:
     name: Build
@@ -18,14 +15,26 @@ jobs:
   
       - name: Deploy to container
         run: | 
-          docker stop game
-          docker rm game
+          # Stop and remove container safely (won't fail if doesn't exist)
+          docker stop game || true
+          docker rm game || true
+          
+          # Build the Docker image
+          docker build -t game .
+          
+          # Run the new container
+          docker run -d --name game -p 3000:3000 game
         
       - name: Update kubeconfig
-        run: aws eks --region ap-south-1 update-kubeconfig --name EKS_CLOUD
-
+        run: aws eks --region us-east-1 update-kubeconfig --name EKS_CLOUD
+        
       - name: Deploy to kubernetes
-        run: kubectl delete -f deployment-service.yml
+        run: |
+          # Apply the deployment (create or update)
+          kubectl apply -f deployment-service.yml
+          
+          # Restart deployment to pull latest image
+          kubectl rollout restart deployment/your-deployment-name
   
       - name: Send a Slack Notification
         if: always()
@@ -36,3 +45,4 @@ jobs:
           channel: '#githubactions-eks'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
