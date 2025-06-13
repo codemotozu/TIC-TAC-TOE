@@ -30,12 +30,12 @@ jobs:
       - name: Docker Build and push
         run: |
           docker build -t tic-tac-toe .
-          docker tag tic-tac-toe codemozu/tic-tac-toe:latest
+          docker tag tic-tac-toe codemotozu/tic-tac-toe:latest
           docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
-          docker push codemozu/tic-tac-toe:latest
+          docker push codemotozu/tic-tac-toe:latest
         env:
           DOCKER_CLI_ACI: 1
         
       - name: Image scan
-        run: trivy image codemozu/tic-tac-toe:latest > trivyimage.txt
+        run: trivy image codemotozu/tic-tac-toe:latest > trivyimage.txt
           
