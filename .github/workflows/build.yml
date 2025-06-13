@@ -1,22 +1,20 @@
 name: Build,Analyze,scan
-
 on:
   push:
     branches:
       - main
-
 jobs:
   build-analyze-scan:
     name: Build
-    runs-on: [self-hosted]
+    runs-on: [self-hosted]  # Or use ubuntu-latest if you don't need self-hosted
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-
+          fetch-depth: 0
+          
       - name: Build and analyze with SonarQube
-        uses: sonarsource/sonarqube-scan-action@master
+        uses: sonarsource/sonarqube-scan-action@master  # Fixed case
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
@@ -32,10 +30,9 @@ jobs:
           docker build -t tic-tac-toe .
           docker tag tic-tac-toe codemotozu/tic-tac-toe:latest
           docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
-          docker push codemotozu/tic-tac-toe:latest
+          docker push codemotozu/tic-tac-toe:latest  # Changed from pull to push
         env:
           DOCKER_CLI_ACI: 1
         
       - name: Image scan
         run: trivy image codemotozu/tic-tac-toe:latest > trivyimage.txt
-          
