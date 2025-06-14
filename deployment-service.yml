@@ -1,8 +1,47 @@
+# ---
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: tic-tac-toe
+# spec:
+#   replicas: 1
+#   selector:
+#     matchLabels:
+#       app: tic-tac-toe
+#   template:
+#     metadata:
+#       labels:
+#         app: tic-tac-toe
+#     spec:
+#       containers:
+#       - name: tic-tac-toe
+#         image: codemotozu/tic-tac-toe:latest
+#         ports:
+#         - containerPort: 3000   # Use port 3000..{}nm
+
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: tic-tac-toe-service
+# spec:
+#   selector:
+#     app: tic-tac-toe
+#   ports:
+#   - protocol: TCP
+#     port: 80                 # Expose port 80
+#     targetPort: 3000
+#   type: LoadBalancer
+
+
+
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: tic-tac-toe
+  labels:
+    app: tic-tac-toe
 spec:
   replicas: 1
   selector:
@@ -16,8 +55,16 @@ spec:
       containers:
       - name: tic-tac-toe
         image: codemotozu/tic-tac-toe:latest
+        imagePullPolicy: Always  # IMPORTANTE: Siempre descargar la imagen más reciente
         ports:
-        - containerPort: 3000   # Use port 3000..{}nm
+        - containerPort: 3000
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
 
 ---
 apiVersion: v1
@@ -29,6 +76,6 @@ spec:
     app: tic-tac-toe
   ports:
   - protocol: TCP
-    port: 80                 # Expose port 80
+    port: 80
     targetPort: 3000
   type: LoadBalancer
