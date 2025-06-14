@@ -91,9 +91,3 @@ jobs:
 
 
 
-
-
-            Commit: ${{ github.sha }}
-            
-            🐳 Container: http://your-server:3000
-            ☸️ Kubernetes: kubectl get pods -l app=tic-tac-toe
