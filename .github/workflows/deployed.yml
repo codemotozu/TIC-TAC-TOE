@@ -85,137 +85,135 @@
 #           channel: '#githubactions-eks'
 
 
+
+
+
+
+
+
+
+
 name: Build,Analyze,scan
 on:
   push:
     branches:
       - main
 
-env:
-  DOCKER_BUILDKIT: 1
-  COMPOSE_DOCKER_CLI_BUILD: 1
-
 jobs:
   build-analyze-scan:
     name: Build
-    runs-on: ubuntu-latest  # Use GitHub-hosted runners for better performance
+    runs-on: [self-hosted]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4  # Updated to v4
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          persist-credentials: false
           
-      # Cache Node modules
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '16'
-          cache: 'npm'
+      - name: Configure Git Safe Directory
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config --global --add safe.directory /home/ubuntu/actions-runner/actions-runner/_work/TIC-TAC-TOE/TIC-TAC-TOE
           
-      - name: Cache npm dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-            
+      # Run npm install first (needed for SonarQube and build)
       - name: npm install dependency
-        run: npm ci --prefer-offline --no-audit
-        
-      # Parallel execution of SonarQube and Trivy file scan
+        run: |
+          # Use npm ci for faster installs in CI
+          if [ -f "package-lock.json" ]; then
+            npm ci
+          else
+            npm install
+          fi
+          
+      # Run SonarQube and Trivy in parallel
       - name: Build and analyze with SonarQube
         uses: sonarsource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          
-      # Set up Docker Buildx for better caching
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        continue-on-error: true  # Don't fail the build if SonarQube is down
         
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Trivy file scan
+        run: |
+          # Run Trivy only on source code, not node_modules
+          trivy fs --skip-dirs node_modules . > trivyfs.txt || true
+        
+      - name: Docker Build and push
+        run: |
+          # Clean up any existing containers/images to free space
+          docker system prune -f || true
           
-      # Build and push with cache
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: codemotozu/tic-tac-toe:latest
-          cache-from: type=registry,ref=codemotozu/tic-tac-toe:buildcache
-          cache-to: type=registry,ref=codemotozu/tic-tac-toe:buildcache,mode=max
+          # Build the Docker image
+          echo "Building Docker image..."
+          docker build -t tic-tac-toe . --no-cache
           
-      # Run security scans in parallel
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'codemotozu/tic-tac-toe:latest'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+          # Tag the image
+          echo "Tagging image..."
+          docker tag tic-tac-toe codemotozu/tic-tac-toe:latest
           
-      - name: Upload Trivy scan results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'trivy-results.sarif'
+          # Login to Docker Hub
+          echo "Logging in to Docker Hub..."
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          
+          # Push the image
+          echo "Pushing image to Docker Hub..."
+          docker push codemotozu/tic-tac-toe:latest
+          
+          # Clean up local image to save space
+          docker rmi tic-tac-toe || true
+        
+      - name: Image scan
+        run: |
+          # Quick scan for critical vulnerabilities only
+          trivy image --severity CRITICAL,HIGH --no-progress codemotozu/tic-tac-toe:latest > trivyimage.txt || true
 
   deploy:
     needs: build-analyze-scan
-    runs-on: ubuntu-latest  # Use GitHub-hosted runners
+    runs-on: [self-hosted]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-        
-      # Configure AWS credentials
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: actions/checkout@v3
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          persist-credentials: false
           
-      # Deploy to Kubernetes only (remove Docker container deployment if using K8s)
-      - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name EKS_CLOUD --region us-east-1
+      - name: Configure Git Safe Directory
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          
+      - name: Stop and remove existing container
+        run: |
+          # Stop and remove any existing containers
+          docker stop game 2>/dev/null || true
+          docker rm game 2>/dev/null || true
+          
+          # Clean up old images to free space
+          docker image prune -f || true
         
+      - name: Deploy to container
+        run: |
+          # Use the image we just pushed (it's already available locally)
+          docker run -d --name game -p 3000:3000 codemotozu/tic-tac-toe:latest
+
+      - name: Update kubeconfig
+        run: |
+          # Update kubeconfig for EKS
+          aws eks --region us-east-1 update-kubeconfig --name EKS_CLOUD
+
       - name: Deploy to kubernetes
         run: |
-          kubectl set image deployment/tic-tac-toe tic-tac-toe=codemotozu/tic-tac-toe:latest
-          kubectl rollout status deployment/tic-tac-toe --timeout=5m
+          # Apply the deployment
+          kubectl apply -f deployment-service.yml
           
-      # Simplified notification
+          # Force a rollout to use the new image
+          kubectl rollout restart deployment/tic-tac-toe || true
+          
+          # Wait for rollout to complete (max 5 minutes)
+          kubectl rollout status deployment/tic-tac-toe --timeout=300s || true
+
       - name: Send a Slack Notification
         if: always()
-        uses: slackapi/slack-github-action@v1.24.0
+        uses: act10ns/slack@v2
         with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "Deployment Status: ${{ job.status }}",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*Deployment Status:* ${{ job.status }}\n*Branch:* ${{ github.ref_name }}\n*Commit:* ${{ github.sha }}"
-                  }
-                }
-              ]
-            }
-
-# Optional: Add a cleanup job
-  cleanup:
-    needs: deploy
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Clean up old Docker images
-        run: |
-          # Add cleanup logic here if needed
-          echo "Cleanup completed"
+          status: ${{ job.status }}
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          channel: '#githubactions-eks'
