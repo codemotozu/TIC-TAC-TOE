@@ -1,7 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { AlertTriangle, TrendingUp, TrendingDown, Users, Shield, Car, Home, Activity, DollarSign, AlertCircle, CheckCircle } from 'lucide-react';
+import './index.css';
 
 const InsuranceAnalyticsDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -46,81 +44,380 @@ const InsuranceAnalyticsDashboard = () => {
     { month: 'Jun', safeDrivers: 94, accidents: 5, premiumReduction: 30 }
   ];
 
-  const ModelPerformanceCard = ({ title, accuracy, lastUpdated, status }) => (
-    <div className="bg-white p-6 rounded-lg shadow-lg border-l-4 border-blue-500">
-      <div className="flex justify-between items-start">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
-          <div className="mt-2">
-            <span className="text-3xl font-bold text-blue-600">{accuracy}%</span>
-            <span className="text-sm text-gray-500 ml-2">Genauigkeit</span>
+  // Simple Icons as components
+  const ShieldIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </svg>
+  );
+
+  const AlertTriangleIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  );
+
+  const ActivityIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/>
+    </svg>
+  );
+
+  const CheckCircleIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+      <polyline points="22,4 12,14.01 9,11.01"/>
+    </svg>
+  );
+
+  const CarIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H8.5a1 1 0 0 0-.8.4L5 11l-5.16 1.86A1 1 0 0 0-1 14v3.15h3"/>
+      <circle cx="6.5" cy="16.5" r="2.5"/>
+      <circle cx="16.5" cy="16.5" r="2.5"/>
+    </svg>
+  );
+
+  const UsersIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  );
+
+  const TrendingUpIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+      <polyline points="17 6 23 6 23 12"/>
+    </svg>
+  );
+
+  const TrendingDownIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/>
+      <polyline points="17 18 23 18 23 12"/>
+    </svg>
+  );
+
+  // Simple Bar Chart Component
+  const SimpleBarChart = ({ data, dataKey1, dataKey2, height = 300 }) => {
+    const maxValue = Math.max(...data.map(d => Math.max(d[dataKey1] || 0, d[dataKey2] || 0)));
+    const barWidth = 60;
+    const chartWidth = data.length * (barWidth + 20);
+
+    return (
+      <div style={{ width: '100%', height: height, overflowX: 'auto' }}>
+        <svg width={chartWidth} height={height} style={{ minWidth: '100%' }}>
+          {data.map((item, index) => {
+            const x = index * (barWidth + 20) + 30;
+            const height1 = (item[dataKey1] / maxValue) * (height - 80);
+            const height2 = (item[dataKey2] / maxValue) * (height - 80);
+            
+            return (
+              <g key={index}>
+                {/* Bar 1 */}
+                <rect
+                  x={x}
+                  y={height - 40 - height1}
+                  width={barWidth / 2 - 2}
+                  height={height1}
+                  fill="#EF4444"
+                />
+                {/* Bar 2 */}
+                <rect
+                  x={x + barWidth / 2}
+                  y={height - 40 - height2}
+                  width={barWidth / 2 - 2}
+                  height={height2}
+                  fill="#10B981"
+                />
+                {/* Label */}
+                <text
+                  x={x + barWidth / 2}
+                  y={height - 10}
+                  textAnchor="middle"
+                  fontSize="12"
+                  fill="#666"
+                >
+                  {item.month || item.week}
+                </text>
+                {/* Values */}
+                <text
+                  x={x + barWidth / 4}
+                  y={height - 45 - height1}
+                  textAnchor="middle"
+                  fontSize="10"
+                  fill="#333"
+                >
+                  {item[dataKey1]}
+                </text>
+                <text
+                  x={x + (3 * barWidth) / 4}
+                  y={height - 45 - height2}
+                  textAnchor="middle"
+                  fontSize="10"
+                  fill="#333"
+                >
+                  {item[dataKey2]}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <div style={{ width: '12px', height: '12px', backgroundColor: '#EF4444' }}></div>
+            <span style={{ fontSize: '12px' }}>{dataKey1 === 'detected' ? 'Erkannt' : 'Automatisiert'}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <div style={{ width: '12px', height: '12px', backgroundColor: '#10B981' }}></div>
+            <span style={{ fontSize: '12px' }}>{dataKey2 === 'prevented' ? 'Verhindert' : 'Manuell'}</span>
           </div>
         </div>
-        <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-          status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-        }`}>
+      </div>
+    );
+  };
+
+  // Simple Pie Chart Component
+  const SimplePieChart = ({ data, width = 300, height = 300 }) => {
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = Math.min(width, height) / 3;
+    
+    let currentAngle = 0;
+    const total = data.reduce((sum, item) => sum + item.value, 0);
+
+    return (
+      <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '40px' }}>
+          <svg width={width} height={height}>
+            {data.map((item, index) => {
+              const angle = (item.value / total) * 360;
+              const startAngle = currentAngle;
+              const endAngle = currentAngle + angle;
+              
+              const x1 = centerX + radius * Math.cos((startAngle * Math.PI) / 180);
+              const y1 = centerY + radius * Math.sin((startAngle * Math.PI) / 180);
+              const x2 = centerX + radius * Math.cos((endAngle * Math.PI) / 180);
+              const y2 = centerY + radius * Math.sin((endAngle * Math.PI) / 180);
+              
+              const largeArcFlag = angle > 180 ? 1 : 0;
+              
+              const pathData = [
+                `M ${centerX} ${centerY}`,
+                `L ${x1} ${y1}`,
+                `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
+                'Z'
+              ].join(' ');
+              
+              currentAngle += angle;
+              
+              return (
+                <path
+                  key={index}
+                  d={pathData}
+                  fill={item.color}
+                  stroke="#fff"
+                  strokeWidth="2"
+                />
+              );
+            })}
+            {/* Center circle */}
+            <circle cx={centerX} cy={centerY} r={radius * 0.3} fill="#fff" />
+          </svg>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {data.map((item, index) => (
+              <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div 
+                  style={{ 
+                    width: '16px', 
+                    height: '16px', 
+                    backgroundColor: item.color, 
+                    borderRadius: '2px' 
+                  }}
+                ></div>
+                <span style={{ fontSize: '14px', color: '#374151' }}>
+                  {item.category}: {item.value}%
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Simple Line Chart Component
+  const SimpleLineChart = ({ data, lines, height = 300 }) => {
+    const maxValue = Math.max(...data.flatMap(d => lines.map(line => d[line.key])));
+    const chartWidth = 500;
+    const padding = 50;
+    
+    const getX = (index) => padding + (index * (chartWidth - 2 * padding)) / (data.length - 1);
+    const getY = (value) => height - padding - ((value / maxValue) * (height - 2 * padding));
+
+    return (
+      <div style={{ width: '100%', overflowX: 'auto' }}>
+        <svg width={chartWidth} height={height}>
+          {/* Grid lines */}
+          {[0, 1, 2, 3, 4].map(i => (
+            <line
+              key={i}
+              x1={padding}
+              y1={padding + (i * (height - 2 * padding)) / 4}
+              x2={chartWidth - padding}
+              y2={padding + (i * (height - 2 * padding)) / 4}
+              stroke="#e5e7eb"
+              strokeWidth="1"
+            />
+          ))}
+          
+          {/* Lines */}
+          {lines.map((line, lineIndex) => {
+            const points = data.map((d, i) => `${getX(i)},${getY(d[line.key])}`).join(' ');
+            return (
+              <polyline
+                key={lineIndex}
+                points={points}
+                fill="none"
+                stroke={line.color}
+                strokeWidth="3"
+              />
+            );
+          })}
+          
+          {/* Data points */}
+          {lines.map((line, lineIndex) =>
+            data.map((d, i) => (
+              <circle
+                key={`${lineIndex}-${i}`}
+                cx={getX(i)}
+                cy={getY(d[line.key])}
+                r="4"
+                fill={line.color}
+              />
+            ))
+          )}
+          
+          {/* X-axis labels */}
+          {data.map((d, i) => (
+            <text
+              key={i}
+              x={getX(i)}
+              y={height - 20}
+              textAnchor="middle"
+              fontSize="12"
+              fill="#666"
+            >
+              {d.month}
+            </text>
+          ))}
+        </svg>
+        
+        {/* Legend */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px', gap: '20px' }}>
+          {lines.map((line, index) => (
+            <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <div style={{ width: '16px', height: '3px', backgroundColor: line.color }}></div>
+              <span style={{ fontSize: '12px' }}>{line.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const ModelPerformanceCard = ({ title, accuracy, lastUpdated, status }) => (
+    <div className="bg-white p-6 rounded-lg shadow-lg border-l-4 border-blue-500">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>{title}</h3>
+          <div style={{ marginTop: '8px' }}>
+            <span style={{ fontSize: '32px', fontWeight: '700', color: '#3b82f6' }}>{accuracy}%</span>
+            <span style={{ fontSize: '14px', color: '#6b7280', marginLeft: '8px' }}>Genauigkeit</span>
+          </div>
+        </div>
+        <div style={{
+          padding: '6px 12px',
+          borderRadius: '9999px',
+          fontSize: '12px',
+          fontWeight: '500',
+          backgroundColor: status === 'active' ? '#dcfce7' : '#fef3c7',
+          color: status === 'active' ? '#166534' : '#92400e'
+        }}>
           {status === 'active' ? 'Aktiv' : 'Training'}
         </div>
       </div>
-      <div className="mt-4 text-sm text-gray-600">
+      <div style={{ marginTop: '16px', fontSize: '14px', color: '#6b7280' }}>
         Letztes Update: {lastUpdated}
       </div>
     </div>
   );
 
-  const MetricCard = ({ title, value, unit, change, trend, icon: Icon }) => (
+  const MetricCard = ({ title, value, unit, change, trend, IconComponent }) => (
     <div className="bg-white p-6 rounded-lg shadow-lg">
-      <div className="flex items-center justify-between">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <div className="flex items-baseline mt-2">
-            <p className="text-2xl font-semibold text-gray-900">
-              {value}{unit && <span className="text-sm ml-1">{unit}</span>}
+          <p style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280', marginBottom: '8px' }}>{title}</p>
+          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '8px' }}>
+            <p style={{ fontSize: '24px', fontWeight: '600', color: '#111827' }}>
+              {value}{unit && <span style={{ fontSize: '14px', marginLeft: '4px' }}>{unit}</span>}
             </p>
             {change && (
-              <div className={`ml-2 flex items-center text-sm ${
-                trend === 'up' ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {trend === 'up' ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
-                {Math.abs(change)}
+              <div style={{
+                marginLeft: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                fontSize: '14px',
+                color: trend === 'up' ? '#059669' : '#dc2626'
+              }}>
+                {trend === 'up' ? <TrendingUpIcon /> : <TrendingDownIcon />}
+                <span style={{ marginLeft: '4px' }}>{Math.abs(change)}</span>
               </div>
             )}
           </div>
         </div>
-        <div className="p-3 bg-blue-50 rounded-lg">
-          <Icon className="w-6 h-6 text-blue-600" />
+        <div style={{ padding: '12px', backgroundColor: '#eff6ff', borderRadius: '8px', color: '#2563eb' }}>
+          <IconComponent />
         </div>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100">
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #eff6ff 0%, #f9fafb 100%)' }}>
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Shield className="w-8 h-8 text-blue-600" />
+      <header style={{ backgroundColor: 'white', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '64px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ color: '#2563eb' }}>
+                  <ShieldIcon />
+                </div>
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900">HUK-COBURG</h1>
-                  <p className="text-xs text-gray-500">Analytics Dashboard</p>
+                  <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#111827', margin: 0 }}>HUK-COBURG</h1>
+                  <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Analytics Dashboard</p>
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <select 
                 value={selectedTimeframe} 
                 onChange={(e) => setSelectedTimeframe(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
               >
                 <option value="7d">7 Tage</option>
                 <option value="30d">30 Tage</option>
                 <option value="90d">90 Tage</option>
                 <option value="1y">1 Jahr</option>
               </select>
-              <div className="text-sm text-gray-600">
+              <div style={{ fontSize: '14px', color: '#6b7280' }}>
                 Letztes Update: {new Date().toLocaleString('de-DE')}
               </div>
             </div>
@@ -129,26 +426,47 @@ const InsuranceAnalyticsDashboard = () => {
       </header>
 
       {/* Navigation Tabs */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
+      <nav style={{ backgroundColor: 'white', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 16px' }}>
+          <div style={{ display: 'flex', gap: '32px' }}>
             {[
-              { id: 'overview', label: 'Übersicht', icon: Activity },
-              { id: 'fraud', label: 'Betrugs-Erkennung', icon: AlertTriangle },
-              { id: 'risk', label: 'Risiko-Bewertung', icon: Shield },
-              { id: 'claims', label: 'Schadenbearbeitung', icon: CheckCircle },
-              { id: 'telematics', label: 'Telematik', icon: Car }
+              { id: 'overview', label: 'Übersicht', icon: ActivityIcon },
+              { id: 'fraud', label: 'Betrugs-Erkennung', icon: AlertTriangleIcon },
+              { id: 'risk', label: 'Risiko-Bewertung', icon: ShieldIcon },
+              { id: 'claims', label: 'Schadenbearbeitung', icon: CheckCircleIcon },
+              { id: 'telematics', label: 'Telematik', icon: CarIcon }
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setActiveTab(id)}
-                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '16px 4px',
+                  borderBottom: activeTab === id ? '2px solid #3b82f6' : '2px solid transparent',
+                  fontWeight: '500',
+                  fontSize: '14px',
+                  color: activeTab === id ? '#2563eb' : '#6b7280',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  if (activeTab !== id) {
+                    e.target.style.color = '#374151';
+                    e.target.style.borderBottomColor = '#d1d5db';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeTab !== id) {
+                    e.target.style.color = '#6b7280';
+                    e.target.style.borderBottomColor = 'transparent';
+                  }
+                }}
               >
-                <Icon className="w-4 h-4" />
+                <Icon />
                 <span>{label}</span>
               </button>
             ))}
@@ -157,11 +475,11 @@ const InsuranceAnalyticsDashboard = () => {
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '32px 16px' }}>
         {activeTab === 'overview' && (
-          <div className="space-y-8">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
             {/* Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px' }}>
               {performanceMetrics.map((metric, index) => (
                 <MetricCard
                   key={index}
@@ -170,15 +488,15 @@ const InsuranceAnalyticsDashboard = () => {
                   unit={metric.unit}
                   change={metric.change}
                   trend={metric.trend}
-                  icon={index === 0 ? Shield : index === 1 ? Activity : index === 2 ? Users : Car}
+                  IconComponent={index === 0 ? ShieldIcon : index === 1 ? ActivityIcon : index === 2 ? UsersIcon : CarIcon}
                 />
               ))}
             </div>
 
             {/* ML Models Performance */}
             <div className="bg-white p-6 rounded-lg shadow-lg">
-              <h2 className="text-lg font-semibold text-gray-800 mb-6">ML-Modell Performance</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '24px' }}>ML-Modell Performance</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
                 <ModelPerformanceCard
                   title="Betrugs-Erkennungsmodell"
                   accuracy={94.2}
@@ -201,161 +519,101 @@ const InsuranceAnalyticsDashboard = () => {
             </div>
 
             {/* Overview Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '32px' }}>
               <div className="bg-white p-6 rounded-lg shadow-lg">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Betrugs-Erkennungsleistung</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={fraudDetectionData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Area type="monotone" dataKey="detected" stackId="1" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.6} />
-                    <Area type="monotone" dataKey="prevented" stackId="1" stroke="#10B981" fill="#10B981" fillOpacity={0.6} />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '16px' }}>Betrugs-Erkennungsleistung</h3>
+                <SimpleBarChart data={fraudDetectionData} dataKey1="detected" dataKey2="prevented" />
               </div>
 
               <div className="bg-white p-6 rounded-lg shadow-lg">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Risiko-Verteilung</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={riskAssessmentData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ category, value }) => `${category}: ${value}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {riskAssessmentData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '16px' }}>Risiko-Verteilung</h3>
+                <SimplePieChart data={riskAssessmentData} />
               </div>
             </div>
           </div>
         )}
 
         {activeTab === 'fraud' && (
-          <div className="space-y-8">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
             <div className="bg-white p-6 rounded-lg shadow-lg">
-              <h2 className="text-lg font-semibold text-gray-800 mb-6">Betrugs-Erkennungssystem</h2>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '24px' }}>Betrugs-Erkennungssystem</h2>
               
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                <div className="bg-red-50 p-4 rounded-lg">
-                  <div className="flex items-center">
-                    <AlertTriangle className="w-8 h-8 text-red-600 mr-3" />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+                <div style={{ backgroundColor: '#fef2f2', padding: '16px', borderRadius: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <div style={{ color: '#dc2626', marginRight: '12px' }}>
+                      <AlertTriangleIcon />
+                    </div>
                     <div>
-                      <p className="text-2xl font-bold text-red-600">55</p>
-                      <p className="text-sm text-red-700">Verdächtige Fälle (Monat)</p>
+                      <p style={{ fontSize: '24px', fontWeight: '700', color: '#dc2626', margin: 0 }}>55</p>
+                      <p style={{ fontSize: '14px', color: '#b91c1c', margin: 0 }}>Verdächtige Fälle (Monat)</p>
                     </div>
                   </div>
                 </div>
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <div className="flex items-center">
-                    <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
+                <div style={{ backgroundColor: '#f0fdf4', padding: '16px', borderRadius: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <div style={{ color: '#059669', marginRight: '12px' }}>
+                      <CheckCircleIcon />
+                    </div>
                     <div>
-                      <p className="text-2xl font-bold text-green-600">€980.000</p>
-                      <p className="text-sm text-green-700">Gesparte Summe (Monat)</p>
+                      <p style={{ fontSize: '24px', fontWeight: '700', color: '#059669', margin: 0 }}>€980.000</p>
+                      <p style={{ fontSize: '14px', color: '#047857', margin: 0 }}>Gesparte Summe (Monat)</p>
                     </div>
                   </div>
                 </div>
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <div className="flex items-center">
-                    <Activity className="w-8 h-8 text-blue-600 mr-3" />
+                <div style={{ backgroundColor: '#eff6ff', padding: '16px', borderRadius: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <div style={{ color: '#2563eb', marginRight: '12px' }}>
+                      <ActivityIcon />
+                    </div>
                     <div>
-                      <p className="text-2xl font-bold text-blue-600">94.2%</p>
-                      <p className="text-sm text-blue-700">Erkennungsgenauigkeit</p>
+                      <p style={{ fontSize: '24px', fontWeight: '700', color: '#2563eb', margin: 0 }}>94.2%</p>
+                      <p style={{ fontSize: '14px', color: '#1d4ed8', margin: 0 }}>Erkennungsgenauigkeit</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={fraudDetectionData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip 
-                    formatter={(value, name) => [
-                      name === 'savings' ? `€${value.toLocaleString()}` : value,
-                      name === 'detected' ? 'Erkannt' : name === 'prevented' ? 'Verhindert' : 'Einsparungen'
-                    ]}
-                  />
-                  <Legend />
-                  <Bar dataKey="detected" fill="#EF4444" name="Erkannt" />
-                  <Bar dataKey="prevented" fill="#10B981" name="Verhindert" />
-                </BarChart>
-              </ResponsiveContainer>
+              <SimpleBarChart data={fraudDetectionData} dataKey1="detected" dataKey2="prevented" height={400} />
             </div>
           </div>
         )}
 
         {activeTab === 'risk' && (
-          <div className="space-y-8">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
             <div className="bg-white p-6 rounded-lg shadow-lg">
-              <h2 className="text-lg font-semibold text-gray-800 mb-6">Risiko-Bewertung & Underwriting</h2>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '24px' }}>Risiko-Bewertung & Underwriting</h2>
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '32px' }}>
                 <div>
-                  <h3 className="text-md font-medium text-gray-700 mb-4">Risiko-Kategorien Verteilung</h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={riskAssessmentData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ category, value }) => `${category}: ${value}%`}
-                        outerRadius={100}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {riskAssessmentData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <h3 style={{ fontSize: '16px', fontWeight: '500', color: '#374151', marginBottom: '16px' }}>Risiko-Kategorien Verteilung</h3>
+                  <SimplePieChart data={riskAssessmentData} width={350} height={350} />
                 </div>
 
                 <div>
-                  <h3 className="text-md font-medium text-gray-700 mb-4">Automatisierte Underwriting-Rate</h3>
-                  <div className="space-y-4">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium">Kfz-Versicherung</span>
-                        <span className="text-sm text-gray-600">85%</span>
+                  <h3 style={{ fontSize: '16px', fontWeight: '500', color: '#374151', marginBottom: '16px' }}>Automatisierte Underwriting-Rate</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {[
+                      { name: 'Kfz-Versicherung', value: 85, color: '#3b82f6' },
+                      { name: 'Hausratversicherung', value: 78, color: '#059669' },
+                      { name: 'Haftpflichtversicherung', value: 92, color: '#7c3aed' }
+                    ].map((item, index) => (
+                      <div key={index} style={{ backgroundColor: '#f9fafb', padding: '16px', borderRadius: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '14px', fontWeight: '500' }}>{item.name}</span>
+                          <span style={{ fontSize: '14px', color: '#6b7280' }}>{item.value}%</span>
+                        </div>
+                        <div style={{ width: '100%', backgroundColor: '#e5e7eb', borderRadius: '9999px', height: '8px' }}>
+                          <div style={{ 
+                            backgroundColor: item.color, 
+                            height: '8px', 
+                            borderRadius: '9999px', 
+                            width: `${item.value}%`,
+                            transition: 'width 1s ease-in-out'
+                          }}></div>
+                        </div>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-blue-600 h-2 rounded-full" style={{width: '85%'}}></div>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium">Hausratversicherung</span>
-                        <span className="text-sm text-gray-600">78%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-green-600 h-2 rounded-full" style={{width: '78%'}}></div>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium">Haftpflichtversicherung</span>
-                        <span className="text-sm text-gray-600">92%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-purple-600 h-2 rounded-full" style={{width: '92%'}}></div>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -364,75 +622,68 @@ const InsuranceAnalyticsDashboard = () => {
         )}
 
         {activeTab === 'claims' && (
-          <div className="space-y-8">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
             <div className="bg-white p-6 rounded-lg shadow-lg">
-              <h2 className="text-lg font-semibold text-gray-800 mb-6">Claims Processing Analytics</h2>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '24px' }}>Claims Processing Analytics</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-blue-600">1,420</p>
-                  <p className="text-sm text-gray-600">Verarbeitete Schäden (diese Woche)</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '32px', fontWeight: '700', color: '#2563eb', margin: 0 }}>1,420</p>
+                  <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Verarbeitete Schäden (diese Woche)</p>
                 </div>
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-green-600">74%</p>
-                  <p className="text-sm text-gray-600">Automatisierung Rate</p>
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '32px', fontWeight: '700', color: '#059669', margin: 0 }}>74%</p>
+                  <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Automatisierung Rate</p>
                 </div>
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-purple-600">3.2</p>
-                  <p className="text-sm text-gray-600">Ø Bearbeitungszeit (Tage)</p>
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '32px', fontWeight: '700', color: '#7c3aed', margin: 0 }}>3.2</p>
+                  <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Ø Bearbeitungszeit (Tage)</p>
                 </div>
               </div>
 
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={claimsData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="week" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="automated" stackId="a" fill="#10B981" name="Automatisiert" />
-                  <Bar dataKey="manual" stackId="a" fill="#F59E0B" name="Manuell" />
-                </BarChart>
-              </ResponsiveContainer>
+              <SimpleBarChart data={claimsData} dataKey1="automated" dataKey2="manual" height={400} />
             </div>
           </div>
         )}
 
         {activeTab === 'telematics' && (
-          <div className="space-y-8">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
             <div className="bg-white p-6 rounded-lg shadow-lg">
-              <h2 className="text-lg font-semibold text-gray-800 mb-6">Telematik Analytics - Smart Driver Programm</h2>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '24px' }}>Telematik Analytics - Smart Driver Programm</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-green-50 p-4 rounded-lg text-center">
-                  <Car className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-green-600">94%</p>
-                  <p className="text-sm text-green-700">Sichere Fahrer</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+                <div style={{ backgroundColor: '#f0fdf4', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ color: '#059669', display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                    <CarIcon />
+                  </div>
+                  <p style={{ fontSize: '24px', fontWeight: '700', color: '#059669', margin: 0 }}>94%</p>
+                  <p style={{ fontSize: '14px', color: '#047857', margin: 0 }}>Sichere Fahrer</p>
                 </div>
-                <div className="bg-red-50 p-4 rounded-lg text-center">
-                  <AlertCircle className="w-8 h-8 text-red-600 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-red-600">5</p>
-                  <p className="text-sm text-red-700">Unfälle (Monat)</p>
+                <div style={{ backgroundColor: '#fef2f2', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ color: '#dc2626', display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                    <AlertTriangleIcon />
+                  </div>
+                  <p style={{ fontSize: '24px', fontWeight: '700', color: '#dc2626', margin: 0 }}>5</p>
+                  <p style={{ fontSize: '14px', color: '#b91c1c', margin: 0 }}>Unfälle (Monat)</p>
                 </div>
-                <div className="bg-blue-50 p-4 rounded-lg text-center">
-                  <DollarSign className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-blue-600">30%</p>
-                  <p className="text-sm text-blue-700">Ø Prämienreduktion</p>
+                <div style={{ backgroundColor: '#eff6ff', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ color: '#2563eb', display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                    <ActivityIcon />
+                  </div>
+                  <p style={{ fontSize: '24px', fontWeight: '700', color: '#2563eb', margin: 0 }}>30%</p>
+                  <p style={{ fontSize: '14px', color: '#1d4ed8', margin: 0 }}>Ø Prämienreduktion</p>
                 </div>
               </div>
 
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={telematicsData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="safeDrivers" stroke="#10B981" strokeWidth={3} name="Sichere Fahrer (%)" />
-                  <Line type="monotone" dataKey="accidents" stroke="#EF4444" strokeWidth={3} name="Unfälle" />
-                  <Line type="monotone" dataKey="premiumReduction" stroke="#3B82F6" strokeWidth={3} name="Prämienreduktion (%)" />
-                </LineChart>
-              </ResponsiveContainer>
+              <SimpleLineChart 
+                data={telematicsData} 
+                lines={[
+                  { key: 'safeDrivers', color: '#10B981', name: 'Sichere Fahrer (%)' },
+                  { key: 'accidents', color: '#EF4444', name: 'Unfälle' },
+                  { key: 'premiumReduction', color: '#3B82F6', name: 'Prämienreduktion (%)' }
+                ]}
+                height={400} 
+              />
             </div>
           </div>
         )}
@@ -441,8 +692,8 @@ const InsuranceAnalyticsDashboard = () => {
   );
 };
 
-export default InsuranceAnalyticsDashboard;
-//     );
-// }
+function App() {
+  return <InsuranceAnalyticsDashboard />;
+}
 
-// export default App;
+export default App;
