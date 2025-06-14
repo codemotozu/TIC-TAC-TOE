@@ -1,111 +1,18 @@
-# name: Build,Analyze,scan
-# on:
-#   push:
-#     branches:
-#       - main
-# jobs:
-#   build-analyze-scan:
-#     name: Build
-#     runs-on: [self-hosted]  # Or use ubuntu-latest if you don't need self-hosted......
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v3  # Updated to v3
-#         with:
-#           fetch-depth: 0
-#           persist-credentials: false  # Prevents git config issues
-          
-#       - name: Configure Git Safe Directory
-#         run: |
-#           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-#           git config --global --add safe.directory /home/ubuntu/actions-runner/actions-runner/_work/TIC-TAC-TOE/TIC-TAC-TOE
-          
-#       - name: Build and analyze with SonarQube
-#         uses: sonarsource/sonarqube-scan-action@master
-#         env:
-#           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-#           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          
-#       - name: npm install dependency
-#         run: npm install
-        
-#       - name: Trivy file scan
-#         run: trivy fs . > trivyfs.txt
-        
-#       - name: Docker Build and push
-#         run: |
-#           docker build -t tic-tac-toe .
-#           docker tag tic-tac-toe codemotozu/tic-tac-toe:latest
-#           docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
-#           docker push codemotozu/tic-tac-toe:latest
-#         env:
-#           DOCKER_CLI_ACI: 1
-        
-#       - name: Image scan
-#         run: trivy image codemotozu/tic-tac-toe:latest > trivyimage.txt
-
-#   deploy:
-#    needs: build-analyze-scan
-#    runs-on: [self-hosted]
-#    steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v3
-#         with:
-#           persist-credentials: false
-          
-#       - name: Configure Git Safe Directory
-#         run: |
-#           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          
-#       - name: docker pull image
-#         run: docker pull codemotozu/tic-tac-toe:latest
-        
-#       - name: Image scan
-#         run: trivy image codemotozu/tic-tac-toe:latest > trivyimagedeploy.txt
-        
-#       - name: Stop and remove existing container
-#         run: |
-#           docker stop game || true
-#           docker rm game || true
-        
-#       - name: Deploy to container
-#         run: docker run -d --name game -p 3000:3000 codemotozu/tic-tac-toe:latest
-
-#       - name: Update kubeconfig
-#         run: aws eks --region us-east-1 update-kubeconfig --name EKS_CLOUD
-
-#       - name: Deploy to kubernetes
-#         run: kubectl apply -f deployment-service.yml
-
-#       - name: Send a Slack Notification
-#         if: always()
-#         uses: act10ns/slack@v2  # Updated to a maintained action
-#         with:
-#           status: ${{ job.status }}
-#           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-#           channel: '#githubactions-eks'
-
-
-
 name: Build,Analyze,scan
 on:
   push:
     branches:
       - main
-
-env:
-  # Usar timestamp como tag para forzar nueva imagen
-  IMAGE_TAG: ${{ github.sha }}
-
 jobs:
   build-analyze-scan:
     name: Build
-    runs-on: [self-hosted]
+    runs-on: [self-hosted]  # Or use ubuntu-latest if you don't need self-hosted......
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3  # Updated to v3
         with:
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: false  # Prevents git config issues
           
       - name: Configure Git Safe Directory
         run: |
@@ -117,49 +24,29 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        continue-on-error: true
           
       - name: npm install dependency
-        run: |
-          # Limpiar cache de npm para asegurar dependencias frescas
-          npm cache clean --force
-          npm install
+        run: npm install
         
       - name: Trivy file scan
-        run: trivy fs . > trivyfs.txt || true
+        run: trivy fs . > trivyfs.txt
         
       - name: Docker Build and push
         run: |
-          # Limpiar imágenes antiguas
-          echo "Limpiando imágenes antiguas..."
-          docker rmi codemotozu/tic-tac-toe:latest || true
-          docker rmi tic-tac-toe || true
-          
-          # Construir nueva imagen sin cache
-          echo "Construyendo nueva imagen con el frontend actualizado..."
-          docker build --no-cache -t tic-tac-toe:${{ env.IMAGE_TAG }} .
-          
-          # Etiquetar imagen con latest y con SHA del commit
-          docker tag tic-tac-toe:${{ env.IMAGE_TAG }} codemotozu/tic-tac-toe:latest
-          docker tag tic-tac-toe:${{ env.IMAGE_TAG }} codemotozu/tic-tac-toe:${{ env.IMAGE_TAG }}
-          
-          # Login a Docker Hub
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-          
-          # Push ambas etiquetas
+          docker build -t tic-tac-toe .
+          docker tag tic-tac-toe codemotozu/tic-tac-toe:latest
+          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
           docker push codemotozu/tic-tac-toe:latest
-          docker push codemotozu/tic-tac-toe:${{ env.IMAGE_TAG }}
-          
-          # Limpiar imágenes locales para liberar espacio
-          docker image prune -f
+        env:
+          DOCKER_CLI_ACI: 1
         
       - name: Image scan
-        run: trivy image codemotozu/tic-tac-toe:${{ env.IMAGE_TAG }} > trivyimage.txt || true
+        run: trivy image codemotozu/tic-tac-toe:latest > trivyimage.txt
 
   deploy:
-    needs: build-analyze-scan
-    runs-on: [self-hosted]
-    steps:
+   needs: build-analyze-scan
+   runs-on: [self-hosted]
+   steps:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
@@ -169,57 +56,31 @@ jobs:
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           
-      - name: Pull nueva imagen
-        run: |
-          # Forzar pull de la nueva imagen
-          docker pull codemotozu/tic-tac-toe:${{ env.IMAGE_TAG }}
-          docker tag codemotozu/tic-tac-toe:${{ env.IMAGE_TAG }} codemotozu/tic-tac-toe:latest
-          
+      - name: docker pull image
+        run: docker pull codemotozu/tic-tac-toe:latest
+        
+      - name: Image scan
+        run: trivy image codemotozu/tic-tac-toe:latest > trivyimagedeploy.txt
+        
       - name: Stop and remove existing container
         run: |
-          echo "Deteniendo y eliminando contenedor antiguo..."
           docker stop game || true
           docker rm game || true
-          
-          # Limpiar imágenes no utilizadas
-          docker image prune -a -f
         
       - name: Deploy to container
-        run: |
-          echo "Desplegando nuevo contenedor con frontend actualizado..."
-          docker run -d --name game -p 3000:3000 codemotozu/tic-tac-toe:${{ env.IMAGE_TAG }}
-          
-          # Verificar que el contenedor esté corriendo
-          sleep 5
-          docker ps | grep game
+        run: docker run -d --name game -p 3000:3000 codemotozu/tic-tac-toe:latest
 
       - name: Update kubeconfig
         run: aws eks --region us-east-1 update-kubeconfig --name EKS_CLOUD
 
-      - name: Update Kubernetes deployment
-        run: |
-          # Actualizar la imagen en el deployment con el nuevo tag
-          echo "Actualizando deployment de Kubernetes con nueva imagen..."
-          kubectl set image deployment/tic-tac-toe tic-tac-toe=codemotozu/tic-tac-toe:${{ env.IMAGE_TAG }}
-          
-          # Forzar rollout para asegurar que se use la nueva imagen
-          kubectl rollout restart deployment/tic-tac-toe
-          
-          # Esperar a que el rollout complete
-          kubectl rollout status deployment/tic-tac-toe --timeout=5m
-          
-          # Verificar que los pods estén usando la nueva imagen
-          kubectl describe deployment tic-tac-toe | grep Image
+      - name: Deploy to kubernetes
+        run: kubectl apply -f deployment-service.yml
 
       - name: Send a Slack Notification
         if: always()
-        uses: act10ns/slack@v2
+        uses: act10ns/slack@v2  # Updated to a maintained action
         with:
           status: ${{ job.status }}
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           channel: '#githubactions-eks'
-          message: |
-            Deployment completado con imagen: codemotozu/tic-tac-toe:${{ env.IMAGE_TAG }}
-            Estado: ${{ job.status }}
-
 
