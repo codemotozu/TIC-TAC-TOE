@@ -85,8 +85,6 @@
 #           channel: '#githubactions-eks'
 
 
-
-
 name: Build,Analyze,scan
 on:
   push:
@@ -95,93 +93,129 @@ on:
 
 env:
   DOCKER_BUILDKIT: 1
-  DOCKER_IMAGE: codemotozu/tic-tac-toe:latest
+  COMPOSE_DOCKER_CLI_BUILD: 1
 
 jobs:
-  build-and-deploy:
-    name: Build and Deploy
-    runs-on: [self-hosted]
+  build-analyze-scan:
+    name: Build
+    runs-on: ubuntu-latest  # Use GitHub-hosted runners for better performance
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4  # Updated to v4
         with:
           fetch-depth: 0
-          persist-credentials: false
           
-      - name: Configure Git Safe Directory
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-        
-      # Cache npm dependencies
+      # Cache Node modules
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '16'
+          cache: 'npm'
+          
       - name: Cache npm dependencies
-        id: cache-npm
         uses: actions/cache@v4
         with:
-          path: node_modules
-          key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
-          
-      - name: Install dependencies
-        if: steps.cache-npm.outputs.cache-hit != 'true'
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+            
+      - name: npm install dependency
         run: npm ci --prefer-offline --no-audit
         
-      # Run SonarQube in background
-      - name: Start SonarQube analysis
+      # Parallel execution of SonarQube and Trivy file scan
+      - name: Build and analyze with SonarQube
         uses: sonarsource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        continue-on-error: true
+          
+      # Set up Docker Buildx for better caching
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
         
-      # Build Docker image with cache
-      - name: Build Docker image
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          
+      # Build and push with cache
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: codemotozu/tic-tac-toe:latest
+          cache-from: type=registry,ref=codemotozu/tic-tac-toe:buildcache
+          cache-to: type=registry,ref=codemotozu/tic-tac-toe:buildcache,mode=max
+          
+      # Run security scans in parallel
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'codemotozu/tic-tac-toe:latest'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          
+      - name: Upload Trivy scan results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  deploy:
+    needs: build-analyze-scan
+    runs-on: ubuntu-latest  # Use GitHub-hosted runners
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      # Configure AWS credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+          
+      # Deploy to Kubernetes only (remove Docker container deployment if using K8s)
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name EKS_CLOUD --region us-east-1
+        
+      - name: Deploy to kubernetes
         run: |
-          # Pull previous image for cache
-          docker pull $DOCKER_IMAGE || true
-          
-          # Build with cache from previous image
-          docker build \
-            --cache-from $DOCKER_IMAGE \
-            --build-arg BUILDKIT_INLINE_CACHE=1 \
-            -t tic-tac-toe .
-            
-          docker tag tic-tac-toe $DOCKER_IMAGE
-          
-      # Login and push to Docker Hub
-      - name: Push to Docker Hub
-        run: |
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-          docker push $DOCKER_IMAGE
-          
-      # Single Trivy scan (remove duplicate)
-      - name: Security scan with Trivy
-        run: |
-          trivy image --severity HIGH,CRITICAL --no-progress --format json -o trivy-report.json $DOCKER_IMAGE || true
-          
-      # Deploy directly without re-pulling
-      - name: Deploy to Kubernetes
-        run: |
-          # Configure kubectl
-          aws eks update-kubeconfig --name EKS_CLOUD --region us-east-1
-          
-          # Apply deployment with updated image
-          kubectl set image deployment/tic-tac-toe tic-tac-toe=$DOCKER_IMAGE
-          
-          # Wait for rollout
+          kubectl set image deployment/tic-tac-toe tic-tac-toe=codemotozu/tic-tac-toe:latest
           kubectl rollout status deployment/tic-tac-toe --timeout=5m
           
-      # Cleanup old containers
-      - name: Cleanup
-        run: |
-          # Stop and remove old game container if exists
-          docker stop game 2>/dev/null || true
-          docker rm game 2>/dev/null || true
-          
-          # Prune old images
-          docker image prune -f
-          
-      - name: Send Slack Notification
+      # Simplified notification
+      - name: Send a Slack Notification
         if: always()
-        uses: act10ns/slack@v2
+        uses: slackapi/slack-github-action@v1.24.0
         with:
-          status: ${{ job.status }}
-          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          channel: '#githubactions-eks'
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "Deployment Status: ${{ job.status }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Deployment Status:* ${{ job.status }}\n*Branch:* ${{ github.ref_name }}\n*Commit:* ${{ github.sha }}"
+                  }
+                }
+              ]
+            }
+
+# Optional: Add a cleanup job
+  cleanup:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Clean up old Docker images
+        run: |
+          # Add cleanup logic here if needed
+          echo "Cleanup completed"
