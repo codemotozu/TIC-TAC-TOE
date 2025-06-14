@@ -85,6 +85,9 @@
 #           channel: '#githubactions-eks'
 
 
+
+
+
 name: Build,Analyze,scan
 on:
   push:
@@ -128,7 +131,7 @@ jobs:
           df -h
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4  # ✅ Only change: v3 → v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -175,19 +178,19 @@ jobs:
           # Build with BuildKit for better caching and smaller images
           export DOCKER_BUILDKIT=1
           
-          # Build image
+          # Build image - KEEPING ORIGINAL NAME
           docker build \
             --no-cache=false \
             --rm \
             -t tic-tac-toe .
           
-          # Tag image  
+          # Tag image - KEEPING ORIGINAL NAME
           docker tag tic-tac-toe codemotozu/tic-tac-toe:latest
           
           # Login to Docker Hub
           echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
           
-          # Push image
+          # Push image - KEEPING ORIGINAL NAME
           docker push codemotozu/tic-tac-toe:latest
           
           # Clean up local build artifacts immediately
@@ -198,7 +201,7 @@ jobs:
           echo "=== Disk Space Before Image Scan ==="
           df -h
           
-          # Use optimized Trivy settings for image scan
+          # Use optimized Trivy settings for image scan - KEEPING ORIGINAL NAME
           trivy image \
             --security-checks vuln \
             --severity HIGH,CRITICAL \
@@ -214,7 +217,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload scan results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # ✅ Only change: v3 → v4
         if: always()
         with:
           name: trivy-scan-results
@@ -248,7 +251,7 @@ jobs:
           sudo rm -rf /tmp/fanal-* || true
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4  # ✅ Only change: v3 → v4
         with:
           persist-credentials: false
 
@@ -257,11 +260,11 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: docker pull image
-        run: docker pull codemotozu/tic-tac-toe:latest
+        run: docker pull codemotozu/tic-tac-toe:latest  # KEEPING ORIGINAL NAME
 
       - name: Image scan (deployment verification)
         run: |
-          # Quick security scan for deployment verification
+          # Quick security scan for deployment verification - KEEPING ORIGINAL NAME
           trivy image \
             --security-checks vuln \
             --severity CRITICAL \
@@ -275,28 +278,28 @@ jobs:
 
       - name: Stop and remove existing container
         run: |
-          docker stop game || true
-          docker rm game || true
+          docker stop game || true    # KEEPING ORIGINAL CONTAINER NAME
+          docker rm game || true      # KEEPING ORIGINAL CONTAINER NAME
 
       - name: Deploy to container
         run: |
           docker run -d \
-            --name game \
+            --name game \             # KEEPING ORIGINAL CONTAINER NAME
             --restart unless-stopped \
             -p 3000:3000 \
             --memory="512m" \
             --cpus="0.5" \
-            codemotozu/tic-tac-toe:latest
+            codemotozu/tic-tac-toe:latest  # KEEPING ORIGINAL IMAGE NAME
 
       - name: Container health check
         run: |
           sleep 10
-          if docker ps | grep -q game; then
+          if docker ps | grep -q game; then  # KEEPING ORIGINAL CONTAINER NAME
             echo "✅ Container is running"
-            docker logs game --tail 20
+            docker logs game --tail 20       # KEEPING ORIGINAL CONTAINER NAME
           else
             echo "❌ Container failed to start"
-            docker logs game || true
+            docker logs game || true         # KEEPING ORIGINAL CONTAINER NAME
             exit 1
           fi
 
@@ -305,28 +308,28 @@ jobs:
 
       - name: Deploy to kubernetes
         run: |
-          # Update image in deployment
+          # Update image in deployment - KEEPING ORIGINAL NAMES
           sed -i 's|image: .*|image: codemotozu/tic-tac-toe:latest|' deployment-service.yml
           
-          # Apply to Kubernetes
+          # Apply to Kubernetes - USING YOUR EXISTING deployment-service.yml
           kubectl apply -f deployment-service.yml
           
-          # Wait for rollout
+          # Wait for rollout - USING YOUR EXISTING DEPLOYMENT NAME
           kubectl rollout status deployment/tic-tac-toe --timeout=300s
 
       - name: Kubernetes health check
         run: |
           echo "=== Kubernetes Deployment Status ==="
-          kubectl get pods -l app=tic-tac-toe
+          kubectl get pods -l app=tic-tac-toe     # KEEPING ORIGINAL LABELS
           kubectl get services
           
-          # Check if pods are running
+          # Check if pods are running - KEEPING ORIGINAL LABELS
           kubectl wait --for=condition=ready pod -l app=tic-tac-toe --timeout=300s
 
       - name: Final deployment cleanup
         if: always()
         run: |
-          # Clean up old images but keep the latest
+          # Clean up old images but keep the latest - KEEPING ORIGINAL NAME
           docker images | grep codemotozu/tic-tac-toe | tail -n +2 | awk '{print $3}' | xargs -r docker rmi -f || true
           docker system prune -f || true
           echo "=== Final Disk Space ==="
@@ -347,6 +350,8 @@ jobs:
             
             🐳 Container: http://your-server:3000
             ☸️ Kubernetes: kubectl get pods -l app=tic-tac-toe
+
+
 
 
 
