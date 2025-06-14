@@ -5,7 +5,7 @@ const InsuranceAnalyticsDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedTimeframe, setSelectedTimeframe] = useState('30d');
 
-  // Mock data - in a real application, this would come from APIs...
+  // Mock data - in a real application, this would come from APIs......
   const fraudDetectionData = [
     { month: 'Jan', detected: 45, prevented: 38, savings: 850000 },
     { month: 'Feb', detected: 52, prevented: 44, savings: 920000 },
