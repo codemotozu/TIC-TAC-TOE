@@ -1,100 +1,3 @@
-# name: Build,Analyze,scan
-# on:
-#   push:
-#     branches:
-#       - main
-# jobs:
-#   build-analyze-scan:
-#     name: Build
-#     runs-on: [self-hosted]  # Or use ubuntu-latest if you don't need self-hosted.
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v3  # Updated to v3
-#         with:
-#           fetch-depth: 0
-#           persist-credentials: false  # Prevents git config issues
-          
-#       - name: Configure Git Safe Directory
-#         run: |
-#           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-#           git config --global --add safe.directory /home/ubuntu/actions-runner/actions-runner/_work/TIC-TAC-TOE/TIC-TAC-TOE
-          
-#       - name: Build and analyze with SonarQube
-#         uses: sonarsource/sonarqube-scan-action@master
-#         env:
-#           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-#           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          
-#       - name: npm install dependency
-#         run: npm install
-        
-#       - name: Trivy file scan
-#         run: trivy fs . > trivyfs.txt
-        
-#       - name: Docker Build and push
-#         run: |
-#           docker build -t tic-tac-toe .
-#           docker tag tic-tac-toe codemotozu/tic-tac-toe:latest
-#           docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
-#           docker push codemotozu/tic-tac-toe:latest
-#         env:
-#           DOCKER_CLI_ACI: 1
-        
-#       - name: Image scan
-#         run: trivy image codemotozu/tic-tac-toe:latest > trivyimage.txt
-
-#   deploy:
-#    needs: build-analyze-scan
-#    runs-on: [self-hosted]
-#    steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v3
-#         with:
-#           persist-credentials: false
-          
-#       - name: Configure Git Safe Directory
-#         run: |
-#           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          
-#       - name: docker pull image
-#         run: docker pull codemotozu/tic-tac-toe:latest
-        
-#       - name: Image scan
-#         run: trivy image codemotozu/tic-tac-toe:latest > trivyimagedeploy.txt
-        
-#       - name: Stop and remove existing container
-#         run: |
-#           docker stop game || true
-#           docker rm game || true
-        
-#       - name: Deploy to container
-#         run: docker run -d --name game -p 3000:3000 codemotozu/tic-tac-toe:latest
-
-#       - name: Update kubeconfig
-#         run: aws eks --region us-east-1 update-kubeconfig --name EKS_CLOUD
-
-#       - name: Deploy to kubernetes
-#         run: kubectl apply -f deployment-service.yml
-
-#       - name: Send a Slack Notification
-#         if: always()
-#         uses: act10ns/slack@v2  # Updated to a maintained action
-#         with:
-#           status: ${{ job.status }}
-#           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-#           channel: '#githubactions-eks'
-
-
-
-
-
-
-
-
-
-
-
-
 name: Build,Analyze,scan
 on:
   push:
@@ -103,256 +6,93 @@ on:
 jobs:
   build-analyze-scan:
     name: Build
-    runs-on: [self-hosted]
+    runs-on: [self-hosted]  # Or use ubuntu-latest if you don't need self-hosted.
     steps:
-      - name: Check disk space before starting
-        run: |
-          echo "=== Disk Space Before Cleanup ==="
-          df -h
-          echo "=== Docker System Info ==="
-          docker system df
-
-      - name: Cleanup disk space
-        run: |
-          echo "=== Cleaning up disk space ==="
-          # Clean Docker system (remove unused images, containers, networks, build cache)
-          docker system prune -af --volumes || true
-          
-          # Remove old Docker images (keep only last 3)
-          docker images --format "table {{.Repository}}:{{.Tag}}\t{{.CreatedAt}}\t{{.Size}}" 
-          docker images | grep -v REPOSITORY | awk '{print $3}' | tail -n +4 | xargs -r docker rmi -f || true
-          
-          # Clean up temporary files
-          sudo rm -rf /tmp/trivy-* || true
-          sudo rm -rf /tmp/fanal-* || true
-          sudo rm -rf /var/tmp/trivy-* || true
-          
-          # Clean up old logs
-          sudo journalctl --vacuum-size=100M || true
-          
-          # Clean package cache
-          sudo apt-get clean || true
-          sudo apt-get autoremove -y || true
-          
-          echo "=== Disk Space After Cleanup ==="
-          df -h
-
       - name: Checkout code
-        uses: actions/checkout@v4  # Updated to v4
+        uses: actions/checkout@v3  # Updated to v3
         with:
           fetch-depth: 0
-          persist-credentials: false
-
+          persist-credentials: false  # Prevents git config issues
+          
       - name: Configure Git Safe Directory
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config --global --add safe.directory /home/ubuntu/actions-runner/actions-runner/_work/TIC-TAC-TOE/TIC-TAC-TOE
-
+          
       - name: Build and analyze with SonarQube
         uses: sonarsource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-
+          
       - name: npm install dependency
         run: npm install
-
-      - name: Trivy file scan (lightweight)
+        
+      - name: Trivy file scan
+        run: trivy fs . > trivyfs.txt
+        
+      - name: Docker Build and push
         run: |
-          # Use more efficient Trivy settings
-          trivy fs . \
-            --security-checks vuln \
-            --format table \
-            --output trivyfs.txt \
-            --timeout 5m \
-            --cache-dir /tmp/trivy-cache \
-            --quiet
-        continue-on-error: true
-
-      - name: Check disk space before Docker build
-        run: |
-          echo "=== Disk Space Before Docker Build ==="
-          df -h
-          # Fail if less than 2GB available
-          available_space=$(df / | awk 'NR==2 {gsub(/G/, "", $4); print $4}')
-          if [ $(echo "$available_space < 2" | bc -l) -eq 1 ]; then
-            echo "❌ Not enough disk space! Available: ${available_space}GB"
-            exit 1
-          fi
-
-      - name: Docker Build and push (optimized)
-        run: |
-          # Build with BuildKit for better caching and smaller images
-          export DOCKER_BUILDKIT=1
-          
-          # Build image (keeping same name as before)
-          docker build \
-            --no-cache=false \
-            --rm \
-            -t tic-tac-toe .
-          
-          # Tag image (keeping same name as before)
+          docker build -t tic-tac-toe .
           docker tag tic-tac-toe codemotozu/tic-tac-toe:latest
-          
-          # Login to Docker Hub
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-          
-          # Push image (keeping same name as before)
+          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
           docker push codemotozu/tic-tac-toe:latest
-          
-          # Clean up local build artifacts immediately
-          docker builder prune -f || true
-
-      - name: Trivy image scan (optimized)
-        run: |
-          echo "=== Disk Space Before Image Scan ==="
-          df -h
-          
-          # Use optimized Trivy settings for image scan
-          trivy image \
-            --security-checks vuln \
-            --severity HIGH,CRITICAL \
-            --format table \
-            --output trivyimage.txt \
-            --timeout 10m \
-            --cache-dir /tmp/trivy-cache \
-            --quiet \
-            --light \
-            codemotozu/tic-tac-toe:latest
-            
-          echo "=== Trivy scan completed ==="
-        continue-on-error: true
-
-      - name: Upload scan results
-        uses: actions/upload-artifact@v4  # 🔥 FIXED: Updated from v3 to v4
-        if: always()
-        with:
-          name: trivy-scan-results
-          path: |
-            trivyfs.txt
-            trivyimage.txt
-          retention-days: 7
-
-      - name: Final cleanup
-        if: always()
-        run: |
-          # Clean up after job completion
-          docker system prune -f || true
-          sudo rm -rf /tmp/trivy-* || true
-          sudo rm -rf /tmp/fanal-* || true
-          echo "=== Final Disk Space ==="
-          df -h
+        env:
+          DOCKER_CLI_ACI: 1
+        
+      - name: Image scan
+        run: trivy image codemotozu/tic-tac-toe:latest > trivyimage.txt
 
   deploy:
-    needs: build-analyze-scan
-    runs-on: [self-hosted]
-    steps:
-      - name: Initial cleanup and space check
-        run: |
-          echo "=== Deploy Job - Initial Disk Space ==="
-          df -h
-          
-          # Clean up space
-          docker system prune -f || true
-          sudo rm -rf /tmp/trivy-* || true
-          sudo rm -rf /tmp/fanal-* || true
-
+   needs: build-analyze-scan
+   runs-on: [self-hosted]
+   steps:
       - name: Checkout code
-        uses: actions/checkout@v4  # Updated to v4
+        uses: actions/checkout@v3
         with:
           persist-credentials: false
-
+          
       - name: Configure Git Safe Directory
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
+          
       - name: docker pull image
-        run: docker pull codemotozu/tic-tac-toe:latest  # Same image name
-
-      - name: Image scan (deployment verification)
-        run: |
-          # Quick security scan for deployment verification
-          trivy image \
-            --security-checks vuln \
-            --severity CRITICAL \
-            --format table \
-            --output trivyimagedeploy.txt \
-            --timeout 5m \
-            --quiet \
-            --light \
-            codemotozu/tic-tac-toe:latest || echo "Scan completed with warnings"
-        continue-on-error: true
-
+        run: docker pull codemotozu/tic-tac-toe:latest
+        
+      - name: Image scan
+        run: trivy image codemotozu/tic-tac-toe:latest > trivyimagedeploy.txt
+        
       - name: Stop and remove existing container
         run: |
-          docker stop game || true  # Same container name
+          docker stop game || true
           docker rm game || true
-
+        
       - name: Deploy to container
-        run: |
-          docker run -d \
-            --name game \
-            --restart unless-stopped \
-            -p 3000:3000 \
-            --memory="512m" \
-            --cpus="0.5" \
-            codemotozu/tic-tac-toe:latest  # Same image name
-
-      - name: Container health check
-        run: |
-          sleep 10
-          if docker ps | grep -q game; then
-            echo "✅ Container is running"
-            docker logs game --tail 20
-          else
-            echo "❌ Container failed to start"
-            docker logs game || true
-            exit 1
-          fi
+        run: docker run -d --name game -p 3000:3000 codemotozu/tic-tac-toe:latest
 
       - name: Update kubeconfig
         run: aws eks --region us-east-1 update-kubeconfig --name EKS_CLOUD
 
       - name: Deploy to kubernetes
-        run: |
-          # Update image in deployment (same image name)
-          sed -i 's|image: .*|image: codemotozu/tic-tac-toe:latest|' deployment-service.yml
-          
-          # Apply to Kubernetes
-          kubectl apply -f deployment-service.yml
-          
-          # Wait for rollout
-          kubectl rollout status deployment/tic-tac-toe --timeout=300s
-
-      - name: Kubernetes health check
-        run: |
-          echo "=== Kubernetes Deployment Status ==="
-          kubectl get pods -l app=tic-tac-toe
-          kubectl get services
-          
-          # Check if pods are running
-          kubectl wait --for=condition=ready pod -l app=tic-tac-toe --timeout=300s
-
-      - name: Final deployment cleanup
-        if: always()
-        run: |
-          # Clean up old images but keep the latest
-          docker images | grep codemotozu/tic-tac-toe | tail -n +2 | awk '{print $3}' | xargs -r docker rmi -f || true
-          docker system prune -f || true
-          echo "=== Final Disk Space ==="
-          df -h
+        run: kubectl apply -f deployment-service.yml
 
       - name: Send a Slack Notification
         if: always()
-        uses: act10ns/slack@v2
+        uses: act10ns/slack@v2  # Updated to a maintained action
         with:
           status: ${{ job.status }}
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           channel: '#githubactions-eks'
-          message: |
-            Deployment Status: ${{ job.status }}
-            Repository: ${{ github.repository }}
-            Branch: ${{ github.ref_name }}
+
+
+
+
+
+
+
+
+
+
             Commit: ${{ github.sha }}
             
             🐳 Container: http://your-server:3000
