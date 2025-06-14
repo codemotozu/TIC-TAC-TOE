@@ -17,7 +17,7 @@ spec:
       - name: tic-tac-toe
         image: codemotozu/tic-tac-toe:latest
         ports:
-        - containerPort: 3000   # Use port 3000..{}
+        - containerPort: 3000   # Use port 3000..{}nm
 
 ---
 apiVersion: v1
