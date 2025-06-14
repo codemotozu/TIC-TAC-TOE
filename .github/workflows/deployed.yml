@@ -1,157 +1,52 @@
-# name: Build,Analyze,scan
-# on:
-#   push:
-#     branches:
-#       - main
-# jobs:
-#   build-analyze-scan:
-#     name: Build
-#     runs-on: [self-hosted]  # Or use ubuntu-latest if you don't need self-hosted......
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v3  # Updated to v3
-#         with:
-#           fetch-depth: 0
-#           persist-credentials: false  # Prevents git config issues
-          
-#       - name: Configure Git Safe Directory
-#         run: |
-#           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-#           git config --global --add safe.directory /home/ubuntu/actions-runner/actions-runner/_work/TIC-TAC-TOE/TIC-TAC-TOE
-          
-#       - name: Build and analyze with SonarQube
-#         uses: sonarsource/sonarqube-scan-action@master
-#         env:
-#           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-#           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          
-#       - name: npm install dependency
-#         run: npm install
-        
-#       - name: Trivy file scan
-#         run: trivy fs . > trivyfs.txt
-        
-#       - name: Docker Build and push
-#         run: |
-#           docker build -t tic-tac-toe .
-#           docker tag tic-tac-toe codemotozu/tic-tac-toe:latest
-#           docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
-#           docker push codemotozu/tic-tac-toe:latest
-#         env:
-#           DOCKER_CLI_ACI: 1
-        
-#       - name: Image scan
-#         run: trivy image codemotozu/tic-tac-toe:latest > trivyimage.txt
-
-#   deploy:
-#    needs: build-analyze-scan
-#    runs-on: [self-hosted]
-#    steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v3
-#         with:
-#           persist-credentials: false
-          
-#       - name: Configure Git Safe Directory
-#         run: |
-#           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          
-#       - name: docker pull image
-#         run: docker pull codemotozu/tic-tac-toe:latest
-        
-#       - name: Image scan
-#         run: trivy image codemotozu/tic-tac-toe:latest > trivyimagedeploy.txt
-        
-#       - name: Stop and remove existing container
-#         run: |
-#           docker stop game || true
-#           docker rm game || true
-        
-#       - name: Deploy to container
-#         run: docker run -d --name game -p 3000:3000 codemotozu/tic-tac-toe:latest
-
-#       - name: Update kubeconfig
-#         run: aws eks --region us-east-1 update-kubeconfig --name EKS_CLOUD
-
-#       - name: Deploy to kubernetes
-#         run: kubectl apply -f deployment-service.yml
-
-#       - name: Send a Slack Notification
-#         if: always()
-#         uses: act10ns/slack@v2  # Updated to a maintained action
-#         with:
-#           status: ${{ job.status }}
-#           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-#           channel: '#githubactions-eks'
-
 name: Build,Analyze,scan
 on:
   push:
     branches:
       - main
-
-env:
-  DOCKER_BUILDKIT: 1  # Enable BuildKit for faster builds
-
 jobs:
   build-analyze-scan:
     name: Build
-    runs-on: [self-hosted]
+    runs-on: [self-hosted]  # Or use ubuntu-latest if you don't need self-hosted......
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3  # Updated to v3
         with:
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: false  # Prevents git config issues
           
       - name: Configure Git Safe Directory
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config --global --add safe.directory /home/ubuntu/actions-runner/actions-runner/_work/TIC-TAC-TOE/TIC-TAC-TOE
           
-      # Add caching for npm dependencies
-      - name: Cache node modules
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-            
       - name: Build and analyze with SonarQube
         uses: sonarsource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        continue-on-error: true  # Don't fail build if scan fails
           
       - name: npm install dependency
-        run: npm ci --prefer-offline  # Faster than npm install
+        run: npm install
         
       - name: Trivy file scan
-        run: trivy fs . > trivyfs.txt || true  # Don't fail on vulnerabilities
+        run: trivy fs . > trivyfs.txt
         
-      # Optimize Docker build with cache
       - name: Docker Build and push
         run: |
-          # Pull the latest image to use as cache
-          docker pull codemotozu/tic-tac-toe:latest || true
-          
-          # Build with cache from the pulled image
-          docker build --cache-from codemotozu/tic-tac-toe:latest -t tic-tac-toe .
-          
+          docker build -t tic-tac-toe .
           docker tag tic-tac-toe codemotozu/tic-tac-toe:latest
           docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
           docker push codemotozu/tic-tac-toe:latest
         env:
           DOCKER_CLI_ACI: 1
         
-      # Skip image scan here - do it in deploy job instead
+      - name: Image scan
+        run: trivy image codemotozu/tic-tac-toe:latest > trivyimage.txt
 
   deploy:
-    needs: build-analyze-scan
-    runs-on: [self-hosted]
-    steps:
+   needs: build-analyze-scan
+   runs-on: [self-hosted]
+   steps:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
@@ -161,8 +56,11 @@ jobs:
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           
-      # Skip docker pull - image is already in registry
-      # Skip image scan - not critical for deployment
+      - name: docker pull image
+        run: docker pull codemotozu/tic-tac-toe:latest
+        
+      - name: Image scan
+        run: trivy image codemotozu/tic-tac-toe:latest > trivyimagedeploy.txt
         
       - name: Stop and remove existing container
         run: |
@@ -180,14 +78,8 @@ jobs:
 
       - name: Send a Slack Notification
         if: always()
-        uses: act10ns/slack@v2
+        uses: act10ns/slack@v2  # Updated to a maintained action
         with:
           status: ${{ job.status }}
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           channel: '#githubactions-eks'
-
-
-
-
-
-
