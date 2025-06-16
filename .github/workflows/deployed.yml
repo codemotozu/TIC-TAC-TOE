@@ -1,3 +1,41 @@
+# name: Build,Analyze,scan
+# on:
+#   push:
+#     branches:
+#       - main
+# jobs:
+#   build-analyze-scan:
+#     name: Build
+#     runs-on: [self-hosted]  # Or use ubuntu-latest if you don't need self-hosted........---
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v3  # Updated to v3
+#         with:
+#           fetch-depth: 0
+          
+#       - name: Deploy to container
+#         # run: docker run -d --name game -p 3000:3000 codemotozu/tic-tac-toe:latest
+#         run: ! 
+#           docker stop game
+#           docker rm game
+
+#       - name: Update kubeconfig
+#         run: aws eks --region us-east-1 update-kubeconfig --name EKS_CLOUD
+
+#       - name: Deploy to kubernetes
+#         run: kubectl delete -f deployment-service.yml
+
+#       - name: Send a Slack Notification
+#         if: always()
+#         uses: act10ns/slack@v2  # Updated to a maintained action
+#         with:
+#           status: ${{ job.status }}
+#           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+#           channel: '#githubactions-eks'
+
+
+
+
 name: Build,Analyze,scan
 on:
   push:
@@ -6,30 +44,31 @@ on:
 jobs:
   build-analyze-scan:
     name: Build
-    runs-on: [self-hosted]  # Or use ubuntu-latest if you don't need self-hosted........---
+    runs-on: [self-hosted]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3  # Updated to v3
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
           
       - name: Deploy to container
-        # run: docker run -d --name game -p 3000:3000 codemotozu/tic-tac-toe:latest
-        run: ! 
-          docker stop game
-          docker rm game
-
+        run: |
+          # Stop and remove existing container if it exists
+          docker stop game || true
+          docker rm game || true
+          # Deploy new container
+          docker run -d --name game -p 3000:3000 codemotozu/tic-tac-toe:latest
+          
       - name: Update kubeconfig
         run: aws eks --region us-east-1 update-kubeconfig --name EKS_CLOUD
-
+        
       - name: Deploy to kubernetes
         run: kubectl delete -f deployment-service.yml
-
+        
       - name: Send a Slack Notification
         if: always()
-        uses: act10ns/slack@v2  # Updated to a maintained action
+        uses: act10ns/slack@v2
         with:
           status: ${{ job.status }}
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           channel: '#githubactions-eks'
-
