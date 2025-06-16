@@ -6,7 +6,7 @@ on:
 jobs:
   build-analyze-scan:
     name: Build
-    runs-on: [self-hosted]  # Or use ubuntu-latest if you don't need self-hosted......
+    runs-on: [self-hosted]  # Or use ubuntu-latest if you don't need self-hosted........
     steps:
       - name: Checkout code
         uses: actions/checkout@v3  # Updated to v3
